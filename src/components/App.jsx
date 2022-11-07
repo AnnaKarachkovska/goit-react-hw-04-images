@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import Notiflix from 'notiflix';
 
 import ErrorBoundary from './ErrorBoundary/ErrorBoundary';
@@ -9,81 +9,77 @@ import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import { getImages } from '../api/api';
 
-class App extends React.Component {
-  state = {
-    name: '',
-    page: 1,
-    items: [],
-    isLoading: false,
-    more: false,
-    largeUrl: '',
-    modal: false,
-  };
+const App = () => {
 
-  onSubmit = ev => {
+  let [name, setName] = useState('');
+  let [page, setPage] = useState(1);
+  let [items, setItems] = useState([]);
+  let [isLoading, setIsLoading] = useState(false);
+  let [more, setMore] = useState(false);
+  let [largeUrl, setLargeUrl] = useState('');
+  let [modal, setModal] = useState(false);
+
+  const onSubmit = (ev) => {
     ev.preventDefault();
-    this.setState({ page: 1, items: [], more: false});
+    setPage(page = 1);
+    setItems(items = []);
+    setMore(false);
+
     const form = ev.currentTarget;
     const search = form.elements.search.value;
-    this.setState({ name: search });
+    
+    if ( search !== '') {
+      setName(name = search);
+      fetchImg();
+    }
     form.reset();
   };
 
-  async fetchImg() {
+  const fetchImg = async () => {
     try {
-      const { name, page } = this.state;
-      this.setState({ isLoading: true });
-      const data = await getImages(name, page);
-      const items = data.hits;
+      setIsLoading(true);
+      let data = await getImages(name, page);
+      let photos = data.hits;
       const imgPerPage = Math.ceil(data.totalHits / 12);
 
       if (data.totalHits > 12) {
-        this.setState({ more: true });
+        setMore(true);
       }
       if (imgPerPage === page) {
-        this.setState({ more: false });
+        setMore(false);
       }
 
-      if (items.length === 0) {
-        this.setState({ isLoading: false });
+      if (photos.length === 0) {
+        setIsLoading(false);
         Notiflix.Notify.failure(
           'Sorry, there are no images matching your search query. Please try again.'
         );
       }
 
-      this.setState(prev => ({
-        items: [...prev.items, ...items],
-        isLoading: false,
-      }));
+      setItems([...items, ...photos]);
+      setIsLoading(false);
+
     } catch (error) {
-      this.setState({ isLoading: false });
+      setIsLoading(false);
       Notiflix.Notify.failure(`Error! ${error.message}`);
     }
   };
 
-  componentDidUpdate(_, prevState) {
-    if (prevState.name !== this.state.name && this.state.name !== '') {
-      this.fetchImg();
-    }
+  const handleClickMore = async () => {
+    await setPage(page = page + 1);
+    fetchImg();
   };
 
-  handleClickMore = async () => {
-    await this.setState(prev => ({ page: prev.page + 1 }));
-    this.fetchImg();
+  const openModal = (id) => {
+    const itemToFind = items.find(item => item.id === id);
+    setModal(true);
+    setLargeUrl(itemToFind.largeImageURL);
   };
 
-  openModal = (id) => {
-    const itemToFind = this.state.items.find(item => item.id === id);
-    this.setState({modal: true, largeUrl: itemToFind.largeImageURL});
+  const closeModal = () => {
+    setModal(false);
   };
 
-  closeModal = () => {
-    this.setState({modal: false});
-  };
-
-  render() {
-    const { items, more, isLoading, modal, largeUrl} = this.state;
-    const {onSubmit, openModal, handleClickMore, closeModal} = this;
     return (
       <>
         <ErrorBoundary>
@@ -95,7 +91,7 @@ class App extends React.Component {
         </ErrorBoundary>
       </>
     );
-  }
+
 };
 
 export default App;
